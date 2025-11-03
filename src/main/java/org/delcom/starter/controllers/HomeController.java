@@ -1,200 +1,286 @@
 package org.delcom.starter.controllers;
 
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.*;
 
 @RestController
 public class HomeController {
 
-    private static final DecimalFormat df = createDecimalFormat();
-
-    private static DecimalFormat createDecimalFormat() {
-        DecimalFormatSymbols symbols = new DecimalFormatSymbols();
-        symbols.setDecimalSeparator('.');
-        return new DecimalFormat("0.00", symbols);
+    @GetMapping("/")
+    public String hello() {
+        return "Hay Abdullah, selamat datang di pengembangan aplikasi dengan Spring Boot!";
     }
 
-    // ==============================================================
-    // 1️⃣ Informasi NIM
-    // ==============================================================
-    @GetMapping("/informasi-nim")
-    public String informasiNim(@RequestParam String nim) {
-        if (nim == null || nim.length() < 8) {
-            return "NIM tidak valid: minimal 8 karakter.";
+    @GetMapping("/hello/{name}")  //localhost:8080/hello/Jose 
+    public String sayHello(@PathVariable String name) {
+        return "Hello, " + name + "!";
+    }
+
+    @GetMapping("/informasiNim/{nim}")
+    public String informasiNim(@PathVariable String nim) {
+        String prefix = nim.substring(0, 3), angkatan = nim.substring(3, 5), nomor = nim.substring(5), prodi;
+        switch (prefix) {  
+            case "11S":
+                prodi = "Sarjana Informatika";
+                break;
+            case "12S":
+                prodi = "Sarjana Sistem Informasi";
+                break;
+            case "14S":
+                prodi = "Sarjana Teknik Elektro";
+                break;
+            case "21S":
+                prodi = "Sarjana Manajemen Rekayasa";
+                break;
+            case "22S":
+                prodi = "Sarjana Teknik Metalurgi";
+                break;
+            case "31S":
+                prodi = "Sarjana Teknik Bioproses";
+                break;
+            case "114":
+                prodi = "Diploma 4 Teknologi Rekayasa Perangkat Lunak";
+                break;
+            case "113":
+                prodi = "Diploma 3 Teknologi Informasi";
+                break;
+            case "133":
+                prodi = "Diploma 3 Teknologi Komputer";
+                break;
+            default:
+                prodi = "Program studi tidak dikenal";
         }
+        return String.format("Inforamsi NIM %s: \n>> Program Studi: %s\n>> Angkatan: 20%s\n>> Urutan: %s", nim, prodi,
+                angkatan, nomor.replaceFirst("^0+", ""));
+    }
 
-        String prefix = nim.substring(0, 3);
-        String angkatan = "20" + nim.substring(3, 5);
-        String lastThree = nim.substring(nim.length() - 3);
-        int urutan;
-
+    @GetMapping("/perolehanNilai/{strBase64}")
+    public String perolehanNilai(@PathVariable String strBase64) {
         try {
-            urutan = Integer.parseInt(lastThree);
-        } catch (NumberFormatException e) {
-            return "NIM tidak valid: format urutan tidak bisa dibaca.";
-        }
-
-        Map<String, String> prodiMap = new HashMap<>();
-        prodiMap.put("11S", "Sarjana Informatika");
-        prodiMap.put("12S", "Sarjana Sistem Informasi");
-        prodiMap.put("14S", "Sarjana Teknik Elektro");
-        prodiMap.put("21S", "Sarjana Manajemen Rekayasa");
-        prodiMap.put("22S", "Sarjana Teknik Metalurgi");
-        prodiMap.put("31S", "Sarjana Teknik Bioproses");
-        prodiMap.put("114", "Diploma 4 Teknologi Rekasaya Perangkat Lunak");
-        prodiMap.put("113", "Diploma 3 Teknologi Informasi");
-        prodiMap.put("133", "Diploma 3 Teknologi Komputer");
-
-        String prodi = prodiMap.getOrDefault(prefix, "Unknown");
-
-        return String.format(
-                "Informasi NIM %s:\n>> Program Studi: %s\n>> Angkatan: %s\n>> Urutan: %d",
-                nim, prodi, angkatan, urutan);
-    }
-
-    // ==============================================================
-    // 2️⃣ Perolehan Nilai
-    // ==============================================================
-    @GetMapping("/perolehan-nilai")
-    public String perolehanNilai(@RequestParam String strBase64) {
-        String data = decodeBase64(strBase64);
-        if (data.isBlank()) return "Data kosong.";
-
-        double totalNilai = 0.0;
-        int totalBobot = 0;
-
-        for (String rawLine : data.split("\n")) {
-            String line = rawLine.trim();
-            if (line.isEmpty()) continue;
-            if (line.equals("---")) break;
-
-            if (line.contains("|")) {
-                String[] parts = line.split("\\|", 3);
-                if (parts.length == 3) {
-                    try {
-                        double nilai = Double.parseDouble(parts[1].trim());
-                        int bobot = Integer.parseInt(parts[2].trim());
-                        if (bobot > 0) {
-                            totalNilai += nilai * (bobot / 100.0);
-                            totalBobot += bobot;
-                        }
-                    } catch (NumberFormatException ignored) {
-                        // Abaikan baris invalid
+            String d = new String(Base64.getDecoder().decode(strBase64));
+            String[] l = d.split("\\r?\\n");
+            int i = 0;
+            int bPA = Integer.parseInt(l[i++].trim()), bT = Integer.parseInt(l[i++].trim()),
+                    bK = Integer.parseInt(l[i++].trim()), bP = Integer.parseInt(l[i++].trim()),
+                    bUTS = Integer.parseInt(l[i++].trim()), bUAS = Integer.parseInt(l[i++].trim());
+            double pPA = 0, pT = 0, pK = 0, pP = 0, pUTS = 0, pUAS = 0, mPA = 0, mT = 0, mK = 0, mP = 0, mUTS = 0,
+                    mUAS = 0;
+            for (; i < l.length; i++) {
+                String ln = l[i].trim();
+                if (ln.equals("---"))
+                    break;
+                if (ln.isEmpty())
+                    continue;
+                String[] p = ln.split("\\|");
+                if (p.length != 3)
+                    continue;
+                try {
+                    String j = p[0].trim();
+                    int nm = Integer.parseInt(p[1].trim()), np = Integer.parseInt(p[2].trim());
+                    switch (j) {
+                        case "PA":
+                            pPA += np;
+                            mPA += nm;
+                            break;
+                        case "T":
+                            pT += np;
+                            mT += nm;
+                            break;
+                        case "K":
+                            pK += np;
+                            mK += nm;
+                            break;
+                        case "P":
+                            pP += np;
+                            mP += nm;
+                            break;
+                        case "UTS":
+                            pUTS += np;
+                            mUTS += nm;
+                            break;
+                        case "UAS":
+                            pUAS += np;
+                            mUAS += nm;
+                            break;
                     }
+                } catch (NumberFormatException e) {
+                    continue;
                 }
             }
-        }
+            class H {
+                int pf(double p, double m) {
+                    if (m <= 0)
+                        return 0;
+                    return (int) Math.floor((p / m) * 100.0 + 1e-9);
+                }
 
-        String grade = calculateGrade(totalNilai);
-        return String.format(
-                "Nilai Akhir: %s (Total Bobot: %d%%)\nGrade: %s",
-                df.format(totalNilai), totalBobot, grade);
-    }
+                double c(int pr, int b) {
+                    return (pr / 100.0) * b;
+                }
 
-    private static String calculateGrade(double nilai) {
-        if (nilai >= 85) return "A";
-        if (nilai >= 75) return "B";
-        if (nilai >= 65) return "C";
-        if (nilai >= 55) return "D";
-        return "E";
-    }
-
-    // ==============================================================
-    // 3️⃣ Perbedaan L dan Kebalikannya
-    // ==============================================================
-    @GetMapping("/perbedaan-l")
-    public String perbedaanL(@RequestParam String strBase64) {
-        String path = decodeBase64(strBase64).trim();
-        if (path.isEmpty()) return "Path kosong.";
-
-        int[] end1 = calculateEndPoint(path);
-        String opposite = reversePath(path);
-        int[] end2 = calculateEndPoint(opposite);
-        int distance = Math.abs(end1[0] - end2[0]) + Math.abs(end1[1] - end2[1]);
-
-        return String.format(
-                "Path Original: %s -> (%d, %d)\nPath Kebalikan: %s -> (%d, %d)\nPerbedaan Jarak: %d",
-                path, end1[0], end1[1], opposite, end2[0], end2[1], distance);
-    }
-
-    private static int[] calculateEndPoint(String path) {
-        int x = 0, y = 0;
-        for (char c : path.toUpperCase().toCharArray()) {
-            switch (c) {
-                case 'U' -> y++;
-                case 'D' -> y--;
-                case 'L' -> x--;
-                case 'R' -> x++;
-                default -> {} // Abaikan karakter lain
+                String g(double n) {
+                    if (n >= 79.5)
+                        return "A";
+                    else if (n >= 72)
+                        return "AB";
+                    else if (n >= 64.5)
+                        return "B";
+                    else if (n >= 57)
+                        return "BC";
+                    else if (n >= 49.5)
+                        return "C";
+                    else if (n >= 34)
+                        return "D";
+                    else
+                        return "E";
+                }
             }
+            H h = new H();
+            int pp = h.pf(pPA, mPA), pt = h.pf(pT, mT), pk = h.pf(pK, mK), pp_proj = h.pf(pP, mP),
+                    puts = h.pf(pUTS, mUTS), puas = h.pf(pUAS, mUAS);
+            double na = h.c(pp, bPA) + h.c(pt, bT) + h.c(pk, bK) + h.c(pp_proj, bP) + h.c(puts, bUTS) + h.c(puas, bUAS);
+            return "Perolehan Nilai:\n"
+                    + String.format(Locale.US, ">> Partisipatif: %d/100 (%.2f/%d)\n", pp, h.c(pp, bPA), bPA)
+                    + String.format(Locale.US, ">> Tugas: %d/100 (%.2f/%d)\n", pt, h.c(pt, bT), bT)
+                    + String.format(Locale.US, ">> Kuis: %d/100 (%.2f/%d)\n", pk, h.c(pk, bK), bK)
+                    + String.format(Locale.US, ">> Proyek: %d/100 (%.2f/%d)\n", pp_proj, h.c(pp_proj, bP), bP)
+                    + String.format(Locale.US, ">> UTS: %d/100 (%.2f/%d)\n", puts, h.c(puts, bUTS), bUTS)
+                    + String.format(Locale.US, ">> UAS: %d/100 (%.2f/%d)\n", puas, h.c(puas, bUAS), bUAS)
+                    + String.format(Locale.US, "\n>> Nilai Akhir: %.2f\n", na) + ">> Grade: " + h.g(na);
+        } catch (Exception e) {
+            return "Error: Input tidak valid.";
         }
-        return new int[]{x, y};
     }
 
-    private static String reversePath(String path) {
-        StringBuilder sb = new StringBuilder();
-        for (char c : path.toUpperCase().toCharArray()) {
-            switch (c) {
-                case 'U' -> sb.append('D');
-                case 'D' -> sb.append('U');
-                case 'L' -> sb.append('R');
-                case 'R' -> sb.append('L');
-                default -> {} // Abaikan karakter lain
-            }
-        }
-        return sb.toString();
-    }
-
-    // ==============================================================
-    // 4️⃣ Paling Ter
-    // ==============================================================
-    @GetMapping("/paling-ter")
-    public String palingTer(@RequestParam String strBase64) {
-        String text = decodeBase64(strBase64).trim();
-        if (text.isEmpty()) return "Teks kosong.";
-
-        Map<String, Integer> freq = new HashMap<>();
-        String[] words = text.toLowerCase().split("\\W+");
-
-        for (String word : words) {
-            if (word.startsWith("ter")) {
-                freq.put(word, freq.getOrDefault(word, 0) + 1);
-            }
-        }
-
-        if (freq.isEmpty()) {
-            return "Tidak ditemukan kata yang berawalan 'ter'.";
-        }
-
-        String topWord = null;
-        int maxCount = 0;
-        for (Map.Entry<String, Integer> e : freq.entrySet()) {
-            if (e.getValue() > maxCount) {
-                maxCount = e.getValue();
-                topWord = e.getKey();
-            }
-        }
-
-        return String.format(
-                "Kata 'ter' yang paling sering muncul adalah '%s' (muncul %d kali).",
-                topWord, maxCount);
-    }
-
-    // ==============================================================
-    // 🔧 Helper: Decode Base64
-    // ==============================================================
-    private static String decodeBase64(String strBase64) {
+    @GetMapping("/perbedaanL/{strBase64}")  
+    public String perbedaanL(@PathVariable String strBase64) {
         try {
-            byte[] bytes = Base64.getDecoder().decode(strBase64);
-            return new String(bytes);
-        } catch (IllegalArgumentException e) {
-            return ""; // Supaya tidak lempar exception ke luar
+            String d = new String(Base64.getDecoder().decode(strBase64));
+            String[] l = d.split("\\r?\\n");                // 1 2 3 4 5 6 7 8 9
+            int n = Integer.parseInt(l[0].trim());                // m[0][0] 1 2 3
+            int[][] m = new int[n][n];                            // m[1][0] 4 5 6
+            for (int i = 0; i < n; i++) {                         // m[2][0] 7 8 9   
+                String[] r = l[i + 1].trim().split("\\s+");
+                for (int j = 0; j < n; j++) {
+                    m[i][j] = Integer.parseInt(r[j]);
+                }
+            }
+            int nL = -1, nKL = -1;
+            if (n >= 3) {
+                nL = 0;
+                for (int i = 0; i < n; i++)
+                    nL += m[i][0];
+                for (int j = 0; j < n; j++)
+                    nL += m[n - 1][j];
+                nL -= m[n - 1][0];
+                nKL = 0;
+                for (int j = 0; j < n; j++)
+                    nKL += m[0][j];
+                for (int i = 0; i < n; i++)
+                    nKL += m[i][n - 1];
+                nKL -= m[0][n - 1];
+            }
+            int nT;
+            if (n % 2 == 1) {
+                nT = m[n / 2][n / 2];
+            } else {
+                int m1 = n / 2 - 1, m2 = n / 2;
+                nT = m[m1][m1] + m[m1][m2] + m[m2][m1] + m[m2][m2];
+            }
+            String pS;
+            int p = 0;
+            if (nL == -1) {
+                pS = "Tidak Ada";
+            } else {
+                p = Math.abs(nL - nKL);
+                pS = String.valueOf(p);
+            }
+            int dom;
+            if (nL == -1 || p == 0) {
+                dom = nT;
+            } else {
+                dom = Math.max(nL, nKL);
+            }
+            return String.format("Nilai L: %s\nNilai Kebalikan L: %s\nNilai Tengah: %d\nPerbedaan: %s\nDominan: %d",
+                    (nL == -1 ? "Tidak Ada" : nL), (nKL == -1 ? "Tidak Ada" : nKL), nT, pS, dom);
+        } catch (Exception e) {
+            return "Error: Input tidak valid.";
+        }
+    }
+
+    @GetMapping("/palingTer/{strBase64}")
+    public String palingTer(@PathVariable String strBase64) {
+        try {
+            String decodedInput = new String(Base64.getDecoder().decode(strBase64));
+            ArrayList<Integer> listNilai = new ArrayList<>();
+            for (String line : decodedInput.split("\\r?\\n")) {
+                String t = line.trim();
+                if (t.equals("---"))
+                    break;
+                if (t.isEmpty())
+                    continue;
+                listNilai.add(Integer.parseInt(t)); 
+            }
+            if (listNilai.isEmpty())
+                return "Error: Tidak ada data input.";
+
+            Map<Integer, Integer> freqMap = new LinkedHashMap<>();
+            for (int val : listNilai) {
+                freqMap.put(val, freqMap.getOrDefault(val, 0) + 1); // 1 1 1 2 2 3 3 3 4 4
+            }
+
+            int maxVal = Collections.max(listNilai); // 4
+            int minVal = Collections.min(listNilai); // 1
+            int frekTerbanyak = Collections.max(freqMap.values()); // 3
+            int frekTersedikit = Collections.min(freqMap.values()); // 2
+
+            int angkaTerbanyak = 0;
+            for (int val : listNilai) {
+                if (freqMap.get(val) == frekTerbanyak) {
+                    angkaTerbanyak = val;
+                    break; // 1
+                }
+            }
+            int angkaTersedikit = 0;
+            for (int val : listNilai) {
+                if (freqMap.get(val) == frekTersedikit) {
+                    angkaTersedikit = val;
+                    break;
+                }
+            }
+
+            int nilaiJumlahTertinggi = 0, jumlahTertinggi = -1, frekJumlahTertinggi = 0;
+            for (Map.Entry<Integer, Integer> entry : freqMap.entrySet()) {
+                int angka = entry.getKey();
+                int freq = entry.getValue();
+                int total = angka * freq;
+                if (total > jumlahTertinggi || (total == jumlahTertinggi && angka > nilaiJumlahTertinggi)) {
+                    jumlahTertinggi = total;
+                    nilaiJumlahTertinggi = angka;
+                    frekJumlahTertinggi = freq;
+                }
+            }
+
+            int nilaiJumlahTerendah = 0;
+            int jumlahTerendah = Integer.MAX_VALUE;
+            for (Map.Entry<Integer, Integer> entry : freqMap.entrySet()) {
+                int angka = entry.getKey();
+                int total = angka * entry.getValue();
+                if (total < jumlahTerendah || (total == jumlahTerendah && angka < nilaiJumlahTerendah)) {
+                    jumlahTerendah = total;
+                    nilaiJumlahTerendah = angka;
+                }
+            }
+
+            return String.format(
+                    "Tertinggi: %d\nTerendah: %d\nTerbanyak: %d (%dx)\nTersedikit: %d (%dx)\nJumlah Tertinggi: %d * %d = %d\nJumlah Terendah: %d * %d = %d",
+                    maxVal, minVal, angkaTerbanyak, frekTerbanyak, angkaTersedikit, frekTersedikit,
+                    nilaiJumlahTertinggi, frekJumlahTertinggi, jumlahTertinggi,
+                    nilaiJumlahTerendah, freqMap.get(nilaiJumlahTerendah), jumlahTerendah);
+        } catch (Exception e) {
+            return "Error: Input tidak valid.";
         }
     }
 }
